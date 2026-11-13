@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Training compute calculator</title>
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>
 :root{--bg:#f2f5f4;--panel:#fff;--ink:#16242b;--mute:#5d6e75;--line:#d5dfdd;--accent:#0c6b5e;--accent-soft:#dcefeb;--warn:#a65a0a;--track:#c9d6d3;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -49,11 +50,15 @@ tr.cur td{font-weight:600;color:var(--accent)}
 .tip:hover,.tip:focus-visible{border-color:var(--accent);color:var(--accent)}
 .tipbox{position:fixed;display:none;z-index:50;max-width:min(310px,calc(100vw - 16px));background:var(--ink);color:var(--bg);font-size:.82rem;line-height:1.4;padding:8px 10px;border-radius:8px;pointer-events:none}
 .foot{color:var(--mute);font-size:.82rem;margin-top:8px;max-width:80ch}.foot a{color:var(--accent)}
+:root[data-theme="light"]{color-scheme:light}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.theme{font:inherit;font-size:.85rem;white-space:nowrap;padding:6px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;cursor:pointer}
+.theme:hover{border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>Training compute calculator</h1>
+<div class="top"><h1>Training compute calculator</h1><button type="button" class="theme" id="theme"></button></div>
 <p class="sub">Change any variable and see total compute (C ≈ 6 × N × D), GPU-hours, wall-clock time and cost update together.</p>
 <div class="grid">
 <div id="inputs">
@@ -230,6 +235,12 @@ document.addEventListener('focusout',e=>{if(e.target.closest('.tip'))hideTip()})
 document.addEventListener('click',e=>{const b=e.target.closest('.tip');if(b){e.preventDefault();tipCur===b?hideTip():showTip(b)}else hideTip()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
 addEventListener('scroll',hideTip,{passive:true});
+const rootEl=document.documentElement;
+function currentTheme(){return rootEl.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
+function paintThemeBtn(){const t=currentTheme(),b=$('theme');b.textContent=t==='dark'?'☀ Light':'☾ Dark';b.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' theme')}
+$('theme').addEventListener('click',()=>{const t=currentTheme()==='dark'?'light':'dark';rootEl.setAttribute('data-theme',t);try{localStorage.setItem('theme',t)}catch(e){}paintThemeBtn()});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!rootEl.hasAttribute('data-theme'))paintThemeBtn()});
+paintThemeBtn();
 syncAll();calc();
 </script>
 </body>

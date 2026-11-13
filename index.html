@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Training compute calculator</title>
+<style>
+:root{--bg:#f2f5f4;--panel:#fff;--ink:#16242b;--mute:#5d6e75;--line:#d5dfdd;--accent:#0c6b5e;--accent-soft:#dcefeb;--warn:#a65a0a;--track:#c9d6d3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a1e;--panel:#17262b;--ink:#e6efed;--mute:#93a7ad;--line:#2b3f45;--accent:#4fd1b8;--accent-soft:#17383a;--warn:#f0a85a;--track:#355058;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1a1e;--panel:#17262b;--ink:#e6efed;--mute:#93a7ad;--line:#2b3f45;--accent:#4fd1b8;--accent-soft:#17383a;--warn:#f0a85a;--track:#355058;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 48px}
+h1{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:clamp(1.6rem,4vw,2.3rem);margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:0 0 20px;max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.out{order:-1;position:static!important}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.card h2{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1.1rem;margin:0 0 10px}
+.f{margin:0 0 14px}
+.f label{display:flex;justify-content:space-between;gap:8px;font-weight:500;font-size:.92rem}
+.f label span{color:var(--mute);font-weight:400}
+.row{display:flex;gap:10px;align-items:center;margin-top:4px}
+input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+input[type=number],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+input[type=number]{width:110px;font-variant-numeric:tabular-nums}
+select{width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;font:inherit;padding:7px 8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--panel);font-weight:600}
+.hint{font-size:.82rem;color:var(--mute);margin:4px 0 0}
+.out{position:sticky;top:calc(12px + env(safe-area-inset-top,0px))}
+.big{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:clamp(1.8rem,5vw,2.6rem);line-height:1.1;margin:2px 0 2px;color:var(--accent)}
+.lbl{font-size:.85rem;color:var(--mute)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.kv dt{color:var(--mute)}.kv dd{margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.formula{font-size:.88rem;background:var(--accent-soft);border-radius:8px;padding:10px 12px;margin-top:12px;overflow-x:auto;white-space:nowrap}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line)}th:first-child,td:first-child{text-align:left}
+tr.cur td{font-weight:600;color:var(--accent)}
+.note{color:var(--warn);font-size:.85rem;margin:8px 0 0}
+.reset{font:inherit;margin-top:6px;padding:7px 12px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;cursor:pointer}
+.f label .lt{color:var(--ink);font-weight:500}
+.tip{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:6px;padding:0;border:1px solid var(--mute);border-radius:50%;background:transparent;color:var(--mute);font:italic 600 11px/1 Georgia,serif;cursor:help;vertical-align:middle}
+.tip:hover,.tip:focus-visible{border-color:var(--accent);color:var(--accent)}
+.tipbox{position:fixed;display:none;z-index:50;max-width:min(310px,calc(100vw - 16px));background:var(--ink);color:var(--bg);font-size:.82rem;line-height:1.4;padding:8px 10px;border-radius:8px;pointer-events:none}
+.foot{color:var(--mute);font-size:.82rem;margin-top:8px;max-width:80ch}.foot a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Training compute calculator</h1>
+<p class="sub">Change any variable and see total compute (C ≈ 6 × N × D), GPU-hours, wall-clock time and cost update together.</p>
+<div class="grid">
+<div id="inputs">
+<section class="card"><h2>Model (N)</h2><div id="g-model"></div></section>
+<section class="card"><h2>Data (D)</h2>
+<div class="seg" id="dmode"><button data-m="tok" aria-pressed="true">Enter tokens</button><button data-m="words" aria-pressed="false">Enter words × tokens/word</button></div>
+<div id="g-data"></div>
+<div class="f" id="langwrap" hidden><label for="lang"><strong class="lt">Language preset<b data-tk="lang"></b></strong><span>rough, editable</span></label>
+<select id="lang"><option value="1.3">English (about 1.3)</option><option value="1.8">Spanish, French, German (about 1.8)</option><option value="1.5">Indic, tokenizer tuned for Indic (about 1.5)</option><option value="5">Indic, English-centric tokenizer (about 5)</option><option value="8">Dravidian, English-centric tokenizer (about 8)</option></select>
+<p class="hint">Presets are illustrative. Measure fertility on your own text with your actual tokenizer.</p></div>
+</section>
+<section class="card"><h2>FLOPs per token</h2>
+<div class="f"><label for="mult"><strong class="lt">Multiplier<b data-tk="multSel"></b></strong><span>forward + backward</span></label>
+<select id="mult"><option value="6">6 (standard)</option><option value="8">8 (with activation recomputation)</option><option value="custom">Custom</option></select></div>
+<div id="g-mult"></div>
+<div class="f"><label><strong class="lt"><input type="checkbox" id="attn"> Add attention term<b data-tk="attn"></b></strong><span>matters for long context</span></label></div>
+<div id="g-attn" hidden></div>
+</section>
+<section class="card"><h2>Cluster</h2>
+<div class="f"><label for="hw"><strong class="lt">GPU type<b data-tk="hw"></b></strong><span>dense bf16, check the datasheet</span></label>
+<select id="hw"><option value="989,80">H100 / H200 class (989 TFLOP/s, 80 GB)</option><option value="312,80">A100 (312 TFLOP/s, 80 GB)</option><option value="2250,192">B200 class (about 2250 TFLOP/s, 192 GB)</option><option value="custom">Custom</option></select></div>
+<div id="g-cluster"></div>
+<button class="reset" id="reset">Reset to defaults</button>
+</section>
+</div>
+<aside class="out">
+<section class="card">
+<div class="lbl">Wall-clock training time<b data-tk="time"></b></div>
+<div class="big" id="o-time">—</div>
+<div class="lbl" id="o-sub"></div>
+<dl class="kv">
+<dt>Total compute C<b data-tk="o-c"></b></dt><dd id="o-c"></dd>
+<dt>Training tokens D<b data-tk="o-d"></b></dt><dd id="o-d"></dd>
+<dt>Tokens per parameter<b data-tk="o-ratio"></b></dt><dd id="o-ratio"></dd>
+<dt>GPU-hours<b data-tk="o-gh"></b></dt><dd id="o-gh"></dd>
+<dt>Estimated GPU cost<b data-tk="o-cost"></b></dt><dd id="o-cost"></dd>
+<dt>Effective cluster throughput<b data-tk="o-rate"></b></dt><dd id="o-rate"></dd>
+<dt>Training state (about 16 bytes/param)<b data-tk="o-mem"></b></dt><dd id="o-mem"></dd>
+<dt>Minimum GPUs just to hold state<b data-tk="o-min"></b></dt><dd id="o-min"></dd>
+</dl>
+<div class="formula" id="o-f"></div>
+<p class="note" id="o-note"></p>
+</section>
+<section class="card"><h2>If you change the cluster size</h2>
+<div class="tw"><table><thead><tr><th>GPUs</th><th>Time (same MFU)</th></tr></thead><tbody id="scale"></tbody></table></div>
+<p class="hint">Ideal scaling. In practice MFU usually drops as you add GPUs because communication takes a bigger share of each step.</p>
+</section>
+</aside>
+</div>
+<footer class="foot"><p>Estimates only. Rules of thumb used: C ≈ 6ND (Kaplan et al., 2020; Hoffmann et al., 2022), about 20 tokens per parameter as the compute-optimal point (Hoffmann et al., 2022, “Chinchilla”), and MFU as defined in Chowdhery et al., 2023 (PaLM). Presets are rough, and the tool ignores pipeline bubbles, storage and networking costs. MIT licensed.</p></footer>
+</div>
+<script>
+const DEF={N:70,T:15,W:11500,fert:1.3,mult:6,L:80,dm:8192,ctx:4096,gpus:4096,peak:989,mem:80,mfu:40,good:92,price:2.5};
+const S={...DEF,mode:'tok',attn:false};
+const sup=s=>String(s).replace(/[-0-9]/g,c=>({'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'})[c]);
+function sci(x){if(!isFinite(x)||x<=0)return '—';const e=Math.floor(Math.log10(x));const m=x/Math.pow(10,e);return m.toFixed(2)+'×10'+sup(e)}
+function num(x,d=2){return x.toLocaleString('en-US',{maximumFractionDigits:d})}
+function dur(s){if(!isFinite(s))return '—';const m=s/60,h=s/3600,d=s/86400;if(s<90)return num(s,0)+' seconds';if(h<2)return num(m,0)+' minutes';if(d<2)return num(h,1)+' hours';if(d<730)return num(d,1)+' days';return num(d/365.25,1)+' years'}
+const TIPS={
+N:"N = number of model parameters (learned weights). For Mixture-of-Experts (MoE) models use the active parameters per token, not the total. Embedding tables are left out because lookups cost almost no FLOPs.",
+T:"D = total tokens processed in training, counting repeats if you train for several epochs. A token is a chunk of text, roughly three quarters of an English word.",
+W:"Size of your text corpus in words. Multiplied by fertility to get tokens.",
+fert:"Fertility = average tokens the tokenizer produces per word. English is about 1.3. Non-Latin scripts with an English-centric tokenizer can be 4 or more, so the same text costs more compute.",
+mult:"Custom FLOPs per parameter per token. FLOP = floating-point operation (one add or multiply). The standard value is 6.",
+multSel:"FLOPs per parameter per token: 2 for the forward pass plus 4 for the backward pass gives 6. Recomputing activations to save memory (gradient checkpointing) raises it toward 8.",
+attn:"Extra per-token compute from attention scores, roughly multiplier × layers × context length × d_model. Negligible for short contexts, significant for long ones.",
+L:"Number of transformer layers (blocks). Only used for the attention term.",
+dm:"d_model = width of the hidden representation (hidden size). Only used for the attention term.",
+ctx:"Context length = number of tokens attended to at once in training. Attention cost per token grows with it.",
+hw:"GPU = graphics processing unit, the accelerator doing the math. bf16 = bfloat16, a 16-bit number format used for training. Presets are approximate dense peaks, so check your datasheet.",
+lang:"Rough fertility examples for different languages and tokenizers. Measure tokens per word on your own text with your actual tokenizer.",
+gpus:"Number of GPUs in the cluster. More GPUs cut training time, though not perfectly linearly.",
+peak:"Peak throughput per GPU in TFLOP/s (trillions of FLOPs per second) at your training precision, dense. Datasheet figures labeled with sparsity are 2× higher and do not apply to dense training.",
+mem:"GPU memory in GB (gigabytes). Used to estimate the minimum GPUs needed to hold weights, gradients and optimizer states.",
+mfu:"MFU = Model FLOPs Utilization: the share of peak FLOP/s spent on useful model math. Communication, pipeline bubbles and memory-bound operations lower it. Large runs typically reach 30 to 55%.",
+good:"Goodput = share of wall-clock time spent making real training progress. Hardware failures, restarts, checkpointing and evaluation lower it. Roughly 90 to 95% on a well-run cluster.",
+price:"Cost per GPU per hour in US dollars (USD). Cloud rates vary widely, so use your own contract price.",
+time:"Total compute C divided by effective cluster throughput.",
+"o-c":"C = total training compute in FLOPs (a count of operations, not a rate). FLOPS with a capital S is operations per second.",
+"o-d":"D = training tokens, either entered directly or computed as words × fertility.",
+"o-ratio":"D ÷ N. The Chinchilla study (Hoffmann et al., 2022) found about 20 tokens per parameter is compute-optimal for training. Many models train far beyond that so the model is cheaper to serve.",
+"o-gh":"GPUs × hours of training. At a fixed MFU it stays the same whatever the cluster size.",
+"o-cost":"GPU-hours × price per GPU-hour. Excludes storage, networking, staff and failed experiments.",
+"o-rate":"Effective FLOP/s = GPUs × peak × MFU × goodput.",
+"o-mem":"Weights, gradients and Adam optimizer states in mixed precision, about 16 bytes per parameter, before activations.",
+"o-min":"Memory-only lower bound: training state ÷ memory per GPU. Real runs need more for activations. Sharding methods such as FSDP or ZeRO spread the state across GPUs."
+};
+function tipHtml(t){return '<button type="button" class="tip" aria-label="What does this mean?" data-tip="'+t.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'">i</button>'}
+const fields={};
+function mk(host,key,label,unit,min,max,step,log){
+const wrap=document.createElement('div');wrap.className='f';
+const id='f-'+key;
+wrap.innerHTML=`<label for="${id}n"><strong class="lt">${label}${TIPS[key]?tipHtml(TIPS[key]):''}</strong><span>${unit}</span></label><div class="row"><input type="range" id="${id}r" aria-label="${label} slider"><input type="number" id="${id}n" min="${min}" step="any"></div>`;
+document.getElementById(host).appendChild(wrap);
+const r=wrap.querySelector('input[type=range]'),n=wrap.querySelector('input[type=number]');
+const toR=v=>log?Math.log10(Math.max(v,min)):v, fromR=v=>log?Math.pow(10,v):+v;
+r.min=toR(min);r.max=toR(max);r.step=log?0.01:step;
+fields[key]={r,n,sync(){const v=S[key];n.value=+(+v).toPrecision(6);r.value=toR(v)}};
+r.addEventListener('input',()=>{let v=fromR(r.value);if(log)v=+v.toPrecision(3);S[key]=v;fields[key].sync();if(key==='peak'||key==='mem')hwCustom();calc()});
+n.addEventListener('input',()=>{const v=parseFloat(n.value);if(v>0){S[key]=v;r.value=toR(v);if(key==='peak'||key==='mem')hwCustom();calc()}});
+}
+mk('g-model','N','Active parameters N','billions',0.1,2000,0,true);
+mk('g-data','T','Training tokens D','trillions',0.01,100,0,true);
+mk('g-data','W','Corpus size','billion words',1,100000,0,true);
+mk('g-data','fert','Fertility','tokens per word',1,12,0.05,false);
+mk('g-mult','mult','Custom multiplier','FLOPs per parameter per token',2,12,0.1,false);
+mk('g-attn','L','Layers','',1,200,1,false);
+mk('g-attn','dm','Hidden size','d_model',256,32768,0,true);
+mk('g-attn','ctx','Context length','tokens',256,1000000,0,true);
+mk('g-cluster','gpus','Number of GPUs','',1,300000,0,true);
+mk('g-cluster','peak','Peak throughput per GPU','TFLOP/s',50,5000,0,true);
+mk('g-cluster','mem','Memory per GPU','GB',16,288,1,false);
+mk('g-cluster','mfu','MFU','% of peak',5,70,1,false);
+mk('g-cluster','good','Goodput','% time actually training',50,100,1,false);
+mk('g-cluster','price','Price per GPU-hour','USD',0.3,12,0.1,false);
+const $=id=>document.getElementById(id);
+function hwCustom(){$('hw').value='custom'}
+function layout(){
+document.querySelectorAll('#dmode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===S.mode));
+const w=S.mode==='words';
+fields.T.r.closest('.f').hidden=w;fields.W.r.closest('.f').hidden=!w;fields.fert.r.closest('.f').hidden=!w;$('langwrap').hidden=!w;
+$('g-mult').hidden=$('mult').value!=='custom';$('g-attn').hidden=!S.attn;
+}
+function compute(g){
+const Np=S.N*1e9;
+const D=S.mode==='tok'?S.T*1e12:S.W*1e9*S.fert;
+const attn=S.attn?S.mult*S.L*S.ctx*S.dm:0;
+const per=S.mult*Np+attn;
+const C=per*D;
+const eff=g*S.peak*1e12*(S.mfu/100)*(S.good/100);
+return{Np,D,per,C,eff,secs:C/eff,attn}
+}
+function calc(){
+layout();
+const r=compute(S.gpus);
+$('o-time').textContent=dur(r.secs);
+$('o-sub').textContent='on '+num(S.gpus,0)+' GPUs at '+S.mfu+'% MFU and '+S.good+'% goodput';
+$('o-c').textContent=sci(r.C)+' FLOPs';
+$('o-d').textContent=sci(r.D)+' tokens';
+const ratio=r.D/r.Np;
+$('o-ratio').textContent=num(ratio,1)+' ('+num(ratio/20,1)+'× the ~20 rule)';
+const gh=r.secs*S.gpus/3600;
+$('o-gh').textContent=num(gh,0);
+const cost=gh*S.price;
+$('o-cost').textContent=cost>=1e6?'$'+num(cost/1e6,2)+' million':'$'+num(cost,0);
+$('o-rate').textContent=sci(r.eff)+' FLOP/s';
+const memB=16*r.Np;
+$('o-mem').textContent=memB>=1e12?num(memB/1e12,2)+' TB':num(memB/1e9,0)+' GB';
+$('o-min').textContent=num(Math.ceil(memB/(S.mem*1e9)),0)+' GPUs';
+$('o-f').innerHTML='C = '+num(S.mult,1)+' × '+sci(r.Np)+' × '+sci(r.D)+(S.attn?' + attention':'')+' = '+sci(r.C)+'<br>Time = C ÷ ('+num(S.gpus,0)+' × '+sci(S.peak*1e12)+' × '+S.mfu/100+' × '+S.good/100+') = '+dur(r.secs);
+const need=Math.ceil(memB/(S.mem*1e9));
+const notes=[];
+if(S.gpus<need)notes.push('This cluster can’t hold the training state for this model. You need at least '+num(need,0)+' GPUs, and more for activations.');
+if(S.attn&&r.attn>0.2*S.mult*r.Np)notes.push('Attention is over 20% of per-token compute at this context length.');
+$('o-note').textContent=notes.join(' ');
+$('scale').innerHTML=[0.25,0.5,1,2,4].map(f=>{const g=Math.max(1,Math.round(S.gpus*f));const x=compute(g);return `<tr class="${f===1?'cur':''}"><td>${num(g,0)}</td><td>${dur(x.secs)}</td></tr>`}).join('');
+}
+function syncAll(){Object.values(fields).forEach(f=>f.sync())}
+$('dmode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){S.mode=b.dataset.m;calc()}});
+$('lang').addEventListener('change',e=>{S.fert=parseFloat(e.target.value);fields.fert.sync();calc()});
+$('mult').addEventListener('change',e=>{if(e.target.value!=='custom'){S.mult=+e.target.value;fields.mult.sync()}calc()});
+$('attn').addEventListener('change',e=>{S.attn=e.target.checked;calc()});
+$('hw').addEventListener('change',e=>{if(e.target.value!=='custom'){const[p,m]=e.target.value.split(',').map(Number);S.peak=p;S.mem=m;fields.peak.sync();fields.mem.sync();calc()}});
+$('reset').addEventListener('click',()=>{Object.assign(S,DEF,{mode:'tok',attn:false});$('attn').checked=false;$('mult').value='6';$('hw').value='989,80';$('lang').value='1.3';syncAll();calc()});
+document.querySelectorAll('[data-tk]').forEach(el=>{el.outerHTML=tipHtml(TIPS[el.dataset.tk])});
+const tipEl=document.createElement('div');tipEl.className='tipbox';tipEl.setAttribute('role','tooltip');document.body.appendChild(tipEl);
+let tipCur=null;
+function showTip(b){tipCur=b;tipEl.textContent=b.dataset.tip;tipEl.style.display='block';const r=b.getBoundingClientRect(),w=tipEl.offsetWidth,h=tipEl.offsetHeight;const x=Math.min(Math.max(8,r.left+r.width/2-w/2),innerWidth-w-8);let y=r.top-h-8;if(y<8)y=r.bottom+8;tipEl.style.left=x+'px';tipEl.style.top=y+'px'}
+function hideTip(){tipEl.style.display='none';tipCur=null}
+document.addEventListener('mouseover',e=>{const b=e.target.closest('.tip');if(b)showTip(b)});
+document.addEventListener('mouseout',e=>{if(e.target.closest('.tip'))hideTip()});
+document.addEventListener('focusin',e=>{const b=e.target.closest('.tip');if(b)showTip(b)});
+document.addEventListener('focusout',e=>{if(e.target.closest('.tip'))hideTip()});
+document.addEventListener('click',e=>{const b=e.target.closest('.tip');if(b){e.preventDefault();tipCur===b?hideTip():showTip(b)}else hideTip()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
+addEventListener('scroll',hideTip,{passive:true});
+syncAll();calc();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 A single-file, no-install calculator that estimates how much compute, time and money it takes to train a transformer language model.
 
-**Live demo:** `https://YOUR-USERNAME.github.io/llm-training-calculator/`
+**Live demo:** `https://kiran-huex.github.io/llm-training-calculator/`
 
 ![Screenshot of the calculator](docs/screenshot.png)
 

@@ -102,13 +102,33 @@ tr.cur td{font-weight:600;color:var(--accent)}
 <div class="formula" id="o-f"></div>
 <p class="note" id="o-note"></p>
 </section>
+<section class="card" id="models"><h2>Compare with known models</h2>
+<div class="f"><label for="mdl"><strong class="lt">Known model<b data-tk="mdl"></b></strong><span>released since Nov 2023</span></label>
+<select id="mdl"><option value="">Select a model…</option></select></div>
+<div id="mdl-out" hidden>
+<div class="lbl" id="m-meta"></div>
+<div class="big" id="m-c" style="font-size:clamp(1.5rem,4vw,2rem)"></div>
+<div class="lbl" id="m-basis"></div>
+<dl class="kv">
+<dt>Compared with your current setup</dt><dd id="m-vs"></dd>
+<dt>Time on your cluster</dt><dd id="m-time"></dd>
+<dt>GPU-hours at your MFU and goodput</dt><dd id="m-gh"></dd>
+<dt>Estimated GPU cost</dt><dd id="m-cost"></dd>
+<dt>Active parameters and tokens</dt><dd id="m-nd"></dd>
+<dt>Confidence<b data-tk="mconf"></b></dt><dd id="m-conf"></dd>
+</dl>
+<button type="button" class="reset" id="m-use">Use this model’s N and D above</button>
+<p class="note" id="m-note"></p>
+</div>
+<p class="hint">Mostly third-party estimates (Epoch AI’s public database) or 6 × N × D from developer disclosures. Closed models can be off by a factor of two or more. Time and cost use your cluster settings above.</p>
+</section>
 <section class="card"><h2>If you change the cluster size</h2>
 <div class="tw"><table><thead><tr><th>GPUs</th><th>Time (same MFU)</th></tr></thead><tbody id="scale"></tbody></table></div>
 <p class="hint">Ideal scaling. In practice MFU usually drops as you add GPUs because communication takes a bigger share of each step.</p>
 </section>
 </aside>
 </div>
-<footer class="foot"><p>Estimates only. Rules of thumb used: C ≈ 6ND (Kaplan et al., 2020; Hoffmann et al., 2022), about 20 tokens per parameter as the compute-optimal point (Hoffmann et al., 2022, “Chinchilla”), and MFU as defined in Chowdhery et al., 2023 (PaLM). Presets are rough, and the tool ignores pipeline bubbles, storage and networking costs. MIT licensed.</p></footer>
+<footer class="foot"><p>Estimates only. Rules of thumb used: C ≈ 6ND (Kaplan et al., 2020; Hoffmann et al., 2022), about 20 tokens per parameter as the compute-optimal point (Hoffmann et al., 2022, “Chinchilla”), and MFU as defined in Chowdhery et al., 2023 (PaLM). Presets are rough, and the tool ignores pipeline bubbles, storage and networking costs. Model compute figures come from Epoch AI’s public database where noted, or from 6ND using developer disclosures. MIT licensed.</p></footer>
 </div>
 <script>
 const DEF={N:70,T:15,W:11500,fert:1.3,mult:6,L:80,dm:8192,ctx:4096,gpus:4096,peak:989,mem:80,mfu:40,good:92,price:2.5};
@@ -136,6 +156,8 @@ mem:"GPU memory in GB (gigabytes). Used to estimate the minimum GPUs needed to h
 mfu:"MFU = Model FLOPs Utilization: the share of peak FLOP/s spent on useful model math. Communication, pipeline bubbles and memory-bound operations lower it. Large runs typically reach 30 to 55%.",
 good:"Goodput = share of wall-clock time spent making real training progress. Hardware failures, restarts, checkpointing and evaluation lower it. Roughly 90 to 95% on a well-run cluster.",
 price:"Cost per GPU per hour in US dollars (USD). Cloud rates vary widely, so use your own contract price.",
+mdl:"Pick a known model to see its training compute next to your own estimate, and how long it would take on the cluster you configured. Most figures are third-party estimates because labs rarely publish them.",
+mconf:"How reliable the number is. High means computed from disclosed parameters and tokens. Low or speculative means imputed from benchmarks or cluster size, and it can be off by a factor of two or more.",
 time:"Total compute C divided by effective cluster throughput.",
 "o-c":"C = total training compute in FLOPs (a count of operations, not a rate). FLOPS with a capital S is operations per second.",
 "o-d":"D = training tokens, either entered directly or computed as words × fertility.",
@@ -235,6 +257,44 @@ document.addEventListener('focusout',e=>{if(e.target.closest('.tip'))hideTip()})
 document.addEventListener('click',e=>{const b=e.target.closest('.tip');if(b){e.preventDefault();tipCur===b?hideTip():showTip(b)}else hideTip()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideTip()});
 addEventListener('scroll',hideTip,{passive:true});
+const MODELS=[
+{id:'gpt4o',cn:'US',name:'GPT-4o',lab:'OpenAI',date:'May 2024',c:3.8e25,conf:'Low',basis:'Epoch AI estimate, imputed from benchmark scores',note:'OpenAI has not published training compute.'},
+{id:'gpt45',cn:'US',name:'GPT-4.5',lab:'OpenAI',date:'Feb 2025',c:3.8e26,conf:'Low',basis:'Epoch AI estimate, from training cluster analysis',note:'OpenAI has not published training compute.'},
+{id:'gem10u',cn:'US',name:'Gemini 1.0 Ultra',lab:'Google DeepMind',date:'Dec 2023',c:5.0e25,conf:'Low',basis:'Epoch AI estimate',note:'Google has not published training compute.'},
+{id:'gem15p',cn:'US',name:'Gemini 1.5 Pro',lab:'Google DeepMind',date:'Feb 2024',c:1.6e25,conf:'Low',basis:'Epoch AI estimate, imputed from benchmark scores',note:'Google has not published training compute.'},
+{id:'c3o',cn:'US',name:'Claude 3 Opus',lab:'Anthropic',date:'Mar 2024',c:1.6e25,conf:'Low',basis:'Epoch AI estimate, imputed from benchmark scores',note:'Anthropic does not publish training compute or parameter counts.'},
+{id:'cs4',cn:'US',name:'Claude Sonnet 4',lab:'Anthropic',date:'May 2025',c:5.0e25,conf:'Speculative',basis:'Epoch AI speculative estimate',note:'Anthropic does not publish training compute or parameter counts.'},
+{id:'co4',cn:'US',name:'Claude Opus 4',lab:'Anthropic',date:'May 2025',c:1.5e26,conf:'Speculative',basis:'Epoch AI speculative estimate',note:'Anthropic does not publish training compute or parameter counts. Epoch’s plausible range is roughly 5×10²⁵ to 2×10²⁶.'},
+{id:'l370',cn:'US',name:'Llama 3 70B',lab:'Meta',date:'Apr 2024',n:70,d:15,conf:'High',basis:'6 × N × D from disclosed parameters and tokens (about)',note:'Excludes post-training and experiments.'},
+{id:'l31405',cn:'US',name:'Llama 3.1 405B',lab:'Meta',date:'Jul 2024',n:405,d:15.6,c:3.8e25,conf:'High',basis:'Reported by Meta; matches 6 × 405B × 15.6T',note:'Trained on up to 16,384 H100 GPUs.'},
+{id:'grok3',cn:'US',name:'Grok 3',lab:'xAI',date:'Feb 2025',c:3.5e26,conf:'Low',basis:'Epoch AI estimate',note:'Estimates vary by source, from about 3.5×10²⁶ up to 4.6×10²⁶.'},
+{id:'grok4',cn:'US',name:'Grok 4',lab:'xAI',date:'Jul 2025',c:5.0e26,conf:'Low',basis:'Epoch AI estimate',note:'xAI has not published training compute.'},
+{id:'q25',cn:'CN',name:'Qwen2.5-72B',lab:'Alibaba',date:'Sep 2024',n:72.7,d:18,conf:'High',basis:'6 × N × D from disclosed parameters and tokens',note:'Excludes post-training and experiments.'},
+{id:'dsv3',cn:'CN',name:'DeepSeek-V3',lab:'DeepSeek',date:'Dec 2024',n:37,d:14.8,conf:'High',basis:'6 × N × D from disclosed active parameters and tokens',note:'Mixture-of-Experts: 671B total, 37B active. DeepSeek reports 2.788M H800 GPU-hours for the full run.'},
+{id:'q3235',cn:'CN',name:'Qwen3-235B-A22B',lab:'Alibaba',date:'Apr 2025',n:22,d:36,conf:'High',basis:'6 × N × D from disclosed active parameters and tokens (about)',note:'Mixture-of-Experts: 235B total, 22B active, roughly 36T tokens.'},
+{id:'kimik2',cn:'CN',name:'Kimi K2',lab:'Moonshot AI',date:'Jul 2025',n:32,d:15.5,conf:'High',basis:'6 × N × D from disclosed active parameters and tokens (about)',note:'Mixture-of-Experts: about 1T total, 32B active.'},
+{id:'dsv32',cn:'CN',name:'DeepSeek-V3.2-Exp',lab:'DeepSeek',date:'Sep 2025',c:4.18e24,conf:'High',basis:'Epoch AI estimate: base model plus post-training',note:'Mixture-of-Experts with 37B active parameters.'}
+];
+function modelC(m){return m.c||6*m.n*1e9*m.d*1e12}
+(function(){const sel=$('mdl');[['US','United States'],['CN','China']].forEach(([k,l])=>{const g=document.createElement('optgroup');g.label=l;MODELS.filter(m=>m.cn===k).forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.name+' ('+m.lab+', '+m.date+')';g.appendChild(o)});sel.appendChild(g)})})();
+function renderModel(){
+const m=MODELS.find(x=>x.id===$('mdl').value);$('mdl-out').hidden=!m;if(!m)return;
+const C=modelC(m),cur=compute(S.gpus),secs=C/cur.eff,gh=secs*S.gpus/3600,cost=gh*S.price;
+$('m-meta').textContent=m.lab+' · '+(m.cn==='US'?'United States':'China')+' · '+m.date;
+$('m-c').textContent=sci(C)+' FLOPs';
+$('m-basis').textContent=m.basis;
+const r=C/cur.C;$('m-vs').textContent=(r>=10?num(r,0):num(r,2))+'× your current run';
+$('m-time').textContent=dur(secs)+' on '+num(S.gpus,0)+' GPUs';
+$('m-gh').textContent=num(gh,0);
+$('m-cost').textContent=cost>=1e6?'$'+num(cost/1e6,2)+' million':'$'+num(cost,0);
+$('m-nd').textContent=m.n&&m.d?num(m.n,1)+'B active, '+num(m.d,1)+'T tokens':'Not disclosed';
+$('m-conf').textContent=m.conf;
+$('m-use').hidden=!(m.n&&m.d);
+$('m-note').textContent=m.note||'';
+}
+const baseCalc=calc;calc=function(){baseCalc();renderModel()};
+$('mdl').addEventListener('change',renderModel);
+$('m-use').addEventListener('click',()=>{const m=MODELS.find(x=>x.id===$('mdl').value);if(m&&m.n&&m.d){S.N=m.n;S.T=m.d;S.mode='tok';fields.N.sync();fields.T.sync();calc()}});
 const rootEl=document.documentElement;
 function currentTheme(){return rootEl.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function paintThemeBtn(){const t=currentTheme(),b=$('theme');b.textContent=t==='dark'?'☀ Light':'☾ Dark';b.setAttribute('aria-label','Switch to '+(t==='dark'?'light':'dark')+' theme')}
